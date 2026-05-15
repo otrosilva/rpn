@@ -29,8 +29,8 @@ func bigFloat(s string) *decimal.Big {
 	return r
 }
 
-// commafWithDigits idea comes from the humanize library, but was modified to
-// work with decimal numbers.
+// commafWithDigits formats a decimal.Big number with commas. The idea comes
+// from the humanize library, but was modified to work with decimal numbers.
 func commafWithDigits(n *decimal.Big, decimals int) string {
 	// Make a copy so we won't modify the original value (passed by pointer).
 	v := big().Copy(n)
@@ -45,7 +45,12 @@ func commafWithDigits(n *decimal.Big, decimals int) string {
 	comma := []byte{','}
 
 	f := fmt.Sprintf("%%.%df", decimals)
-	parts := strings.Split(fmt.Sprintf(f, v), ".")
+	// Note: A bug in the decimal library causes Printf to round incorrectly.
+	// We use quantize manually here to work around that bug.
+	v.Context.RoundingMode = decimal.ToNearestEven
+	v.Quantize(decimals)
+	s := fmt.Sprintf(f, v)
+	parts := strings.Split(s, ".")
 
 	pos := 0
 	if len(parts[0])%3 != 0 {
@@ -98,9 +103,17 @@ func formatNumber(ctx decimal.Context, n *decimal.Big, base, decimals int) strin
 		return fmt.Sprint(n)
 	}
 
-	// clean = double as ascii, without non-significant decimal zeroes.
+	// Note: A bug in the decimal library causes Printf to round incorrectly.
+	// We use quantize manually here to work around that bug.
+	v := big().Copy(n)
+	v.Context.RoundingMode = decimal.ToNearestEven
+	v.Quantize(decimals)
+
 	f := fmt.Sprintf("%%.%df", decimals)
-	clean := stripTrailingDigits(fmt.Sprintf(f, n), decimals)
+	s := fmt.Sprintf(f, v)
+
+	// clean = double as ascii, without non-significant decimal zeroes.
+	clean := stripTrailingDigits(s, decimals)
 
 	var (
 		n64    uint64

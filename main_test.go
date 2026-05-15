@@ -134,13 +134,12 @@ func TestRPN(t *testing.T) {
 			return z.Quo(z, bigUint(3))
 		}()},
 		{input: "rad 60 PI * 180 / tan", want: ctx.Pow(big(), bigUint(3), big().Quo(bigUint(1), bigUint(2)))}, // Sqrt(3)
-		{input: "deg -1 180 * PI / asin", want: big().Quo(ctx.Pi(big()), bigUint(2)).SetSignbit(true)},        // -Pi / 2
 		{input: "rad -1 asin", want: big().Quo(ctx.Pi(big()), bigUint(2)).SetSignbit(true)},                   // -Pi / 2
 		{input: "rad 0 acos", want: big().Quo(ctx.Pi(big()), bigUint(2))},                                     // Pi / 2
 		{input: "rad 1 acos", want: bigUint(0)},
-		{input: "deg 0.5 180 * PI / acos", want: big().Quo(ctx.Pi(big()), bigUint(3))}, // Pi / 3
-		{input: "rad 3 sqr atan", want: big().Quo(ctx.Pi(big()), bigUint(3))},          // Pi / 3
-		{input: "deg 1 180 * PI / atan", want: big().Quo(ctx.Pi(big()), bigUint(4))},   // Pi / 4
+		{input: "rad 3 sqr atan", want: big().Quo(ctx.Pi(big()), bigUint(3))}, // Pi / 3
+		// https://github.com/marcopaganini/rpn/issues/20
+		{input: ".1 sin cos tan atan acos asin", want: bigFloat("0.1"), precision: 6},
 
 		// Log functions
 		{input: "c E ln", want: bigUint(1)},
@@ -221,6 +220,7 @@ func TestFormatNumber(t *testing.T) {
 		{10, bigUint(1000000000000000), "1000000000000000 (1,000,000,000,000,000)"},
 		{10, bigFloat("10000.333333"), "10000.333333 (10,000.333333)"},
 		{10, bigFloat("-10000.333333"), "-10000.333333 (-10,000.333333)"},
+		{10, bigFloat("0.099999999999999999999999999999998"), "0.1"},
 		{10, ctx.Quo(big(), bigUint(567), bigUint(999)), "0.567568"},
 		{10, ctx.Pow(big(), bigUint(2), bigUint(64)), "18446744073709551616 (18,446,744,073,709,551,616)"},
 		{10, ctx.Pow(big(), bigUint(2), bigUint(1234567890)), "Infinity"},

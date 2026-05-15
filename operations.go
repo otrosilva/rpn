@@ -31,12 +31,12 @@ type (
 	// their descriptions. The operations go in a list of interfaces so
 	// we can also use strings and print them in the help() function.
 	opsType struct {
-		base     int           // Base for printing (default = 10)
-		debug    bool          // Debug state
-		decimals int           // How many decimals to use when printing
-		degmode  bool          // Degrees mode (default = Radians)
-		stack    *stackType    // stack object to use
-		ops      []interface{} // list of ophandlers & descriptions
+		base     int        // Base for printing (default = 10)
+		debug    bool       // Debug state
+		decimals int        // How many decimals to use when printing
+		degmode  bool       // Degrees mode (default = Radians)
+		stack    *stackType // stack object to use
+		ops      []any      // list of ophandlers & descriptions
 	}
 
 	// opmapType is a handler to operation map, used to find the right
@@ -44,15 +44,30 @@ type (
 	opmapType map[string]ophandler
 )
 
-// radOrDeg converts the value passed to radians if degmode (degrees
+// toRadians converts the value passed to radians if degmode (degrees
 // mode) is set. Otherwise, it just returns the same value (radians).
-func radOrDeg(ctx decimal.Context, n *decimal.Big, degmode bool) *decimal.Big {
+func toRadians(ctx decimal.Context, n *decimal.Big, degmode bool) *decimal.Big {
+	// Make a copy so we won't modify the original value (passed by pointer).
+	ret := big().Copy(n)
 	if degmode {
 		pi := ctx.Pi(big())
 		npi := big().Mul(n, pi)
-		return ctx.Quo(big(), npi, bigUint(180))
+		ret = ctx.Quo(big(), npi, bigUint(180))
 	}
-	return n
+	return ret
+}
+
+// toDegrees converts the value passed to degrees if degmode (degrees
+// mode) is set. Otherwise, it just returns the same value (radians).
+func toDegrees(ctx decimal.Context, n *decimal.Big, degmode bool) *decimal.Big {
+	// Make a copy so we won't modify the original value (passed by pointer).
+	ret := big().Copy(n)
+	if degmode {
+		pi := ctx.Pi(big())
+		n180 := big().Mul(n, bigUint(180))
+		ret = ctx.Quo(big(), n180, pi)
+	}
+	return ret
 }
 
 func bigToUint64(x *decimal.Big) uint64 {
@@ -77,7 +92,7 @@ func newOpsType(ctx decimal.Context, stack *stackType) *opsType {
 		build = "v" + Build
 	}
 
-	ret.ops = []interface{}{
+	ret.ops = []any{
 		// Header
 		"BOLD:Online help for " + programTitle + " (" + build + ").",
 		"BOLD:See http://github.com/marcopaganini/rpn for full details.",
@@ -182,29 +197,34 @@ func newOpsType(ctx decimal.Context, stack *stackType) *opsType {
 		}},
 		"",
 		"BOLD:Trigonometric and Log Operations",
+		// sin, cos, and tan ALWAYS take an angle in radians as input and
+		// return a number so we convert the input to radians if degmode is
+		// set.
 		ophandler{"sin", "Sine of x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
-			z := ctx.Sin(big(), radOrDeg(ctx, a[0], ret.degmode))
+			z := ctx.Sin(big(), toRadians(ctx, a[0], ret.degmode))
 			return []*decimal.Big{z}, 1, nil
 		}},
 		ophandler{"cos", "Cosine of x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
-			z := ctx.Cos(big(), radOrDeg(ctx, a[0], ret.degmode))
+			z := ctx.Cos(big(), toRadians(ctx, a[0], ret.degmode))
 			return []*decimal.Big{z}, 1, nil
 		}},
 		ophandler{"tan", "Tangent of x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
-			z := ctx.Tan(big(), radOrDeg(ctx, a[0], ret.degmode))
+			z := ctx.Tan(big(), toRadians(ctx, a[0], ret.degmode))
 			return []*decimal.Big{z}, 1, nil
 		}},
+		// asin, acos, and atan ALWAYS take a number and return an angle.
+		// We convert the output to degrees if degmode is set.
 		ophandler{"asin", "Arcsine of x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
-			z := ctx.Asin(big(), radOrDeg(ctx, a[0], ret.degmode))
-			return []*decimal.Big{z}, 1, nil
+			z := ctx.Asin(big(), a[0])
+			return []*decimal.Big{toDegrees(ctx, z, ret.degmode)}, 1, nil
 		}},
 		ophandler{"acos", "Arccosine of x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
-			z := ctx.Acos(big(), radOrDeg(ctx, a[0], ret.degmode))
-			return []*decimal.Big{z}, 1, nil
+			z := ctx.Acos(big(), a[0])
+			return []*decimal.Big{toDegrees(ctx, z, ret.degmode)}, 1, nil
 		}},
 		ophandler{"atan", "Arctangent of x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
-			z := ctx.Atan(big(), radOrDeg(ctx, a[0], ret.degmode))
-			return []*decimal.Big{z}, 1, nil
+			z := ctx.Atan(big(), a[0])
+			return []*decimal.Big{toDegrees(ctx, z, ret.degmode)}, 1, nil
 		}},
 		ophandler{"exp", "Calculate e ^ x", 1, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
 			z := ctx.Exp(big(), a[0])

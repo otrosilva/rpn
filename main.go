@@ -71,7 +71,7 @@ func atof(s string) (*decimal.Big, error) {
 // oeprations in the string and returns. If the string is empty, it enters a
 // readline loop accepting commands from the user.
 func calc(stack *stackType, cmd string) error {
-	// Wait for entry until Ctrl-D or q is issued
+	// Wait for entry until Ctrl-D or q is issued.
 	var (
 		line string
 		err  error
@@ -129,7 +129,7 @@ func calc(stack *stackType, cmd string) error {
 		// Split into fields and process
 		autoprint := false
 		for _, token := range strings.Fields(line) {
-			// Check operator map
+			// Check operator map.
 			handler, ok := opmap[token]
 			if ok {
 				results, remove, err := operation(handler, stack)
