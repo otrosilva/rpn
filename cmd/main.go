@@ -32,6 +32,8 @@ type Model struct {
 	// text input, and is it visible?
 	input        textinput.Model
 	inputVisible bool
+	// comment input mode
+	commentMode  bool
 	// vhs mode (demo.tape)
 	vhs       bool
 	vhsTyping bool
@@ -107,6 +109,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err != nil {
 			m.err = err.Error()
 			m.inputVisible = false
+			m.commentMode = false
 			m.input.Reset()
 			return m, nil
 		}
@@ -138,6 +141,21 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 	var cmd tea.Cmd
 
 	key := msg.String()
+	
+	// Handle comment mode
+	if m.commentMode {
+		if key == "enter" {
+			return cmd, m.finishComment()
+		}
+		if key == "esc" {
+			m.commentMode = false
+			m.input.Reset()
+			return cmd, nil
+		}
+		m.input, cmd = m.input.Update(msg)
+		return cmd, nil
+	}
+
 	if command, ok := internal.CommandsByKey[key]; ok {
 		return cmd, m.run(command.Name)
 	}
@@ -150,6 +168,10 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 		if key == "enter" {
 			return cmd, m.run(internal.DUP)
 		}
+		if key == "#" {
+			// Start comment mode
+			return cmd, m.startComment()
+		}
 		if slices.Contains(NumberKeys, key) {
 			m.inputVisible = true
 		}
@@ -159,6 +181,13 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 	if m.inputVisible {
 		if key == "enter" {
 			return cmd, m.enter(true)
+		}
+		if key == "#" {
+			// Save number and enter comment mode
+			if err := m.enter(true); err != nil {
+				return cmd, err
+			}
+			return cmd, m.startComment()
 		}
 		m.input, cmd = m.input.Update(msg)
 	}
@@ -288,6 +317,35 @@ func (m *Model) enter(explicit bool) error {
 	return nil
 }
 
+// Start comment mode
+func (m *Model) startComment() error {
+	m.commentMode = true
+	m.input.SetValue("")
+	m.input.Placeholder = "add comment..."
+	return nil
+}
+
+// Finish adding a comment
+func (m *Model) finishComment() error {
+	comment := m.input.Value()
+	
+	// Get the top of stack or add 0
+	if m.c.Len() == 0 {
+		m.c.Enter(decimal.NewFromInt(0), true)
+	}
+	
+	// Add the comment to the top of the stack
+	if err := m.c.AddCommentToTop(comment); err != nil {
+		return err
+	}
+	
+	m.commentMode = false
+	m.input.Reset()
+	m.input.Placeholder = "enter number..."
+	m.say = "comment added"
+	return nil
+}
+
 func (m *Model) inputNeg() error {
 	s := m.input.Value()
 	if len(s) == 0 {
@@ -375,7 +433,11 @@ func (m Model) stack(style lipgloss.Style) string {
 		return internal.IndexStyle.Render(array[0]+":") + internal.GradientStyles[ii].Render(array[1])
 	})
 	if m.inputVisible {
-		stack = internal.Push(stack, " "+m.input.View())
+		if m.commentMode {
+			stack = internal.Push(stack, " "+m.input.View()+" #")
+		} else {
+			stack = internal.Push(stack, " "+m.input.View())
+		}
 	}
 	return strings.Join(internal.ClipLines(stack, style), "\n")
 }
