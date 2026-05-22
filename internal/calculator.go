@@ -13,10 +13,15 @@ import (
 // The calculator, which has a stack, a history and can run commands.
 //
 
+type StackItem struct {
+	Value   decimal.Decimal
+	Comment string
+}
+
 type Calculator struct {
-	stack   []Num
+	stack   []StackItem
 	history []string
-	undo    [][]Num
+	undo    [][]StackItem
 }
 
 func NewCalculator() *Calculator {
@@ -28,11 +33,15 @@ func NewCalculator() *Calculator {
 //
 
 func (c *Calculator) GetStack() []Num {
-	return c.stack
+	result := make([]Num, len(c.stack))
+	for i, item := range c.stack {
+		result[i] = item.Value
+	}
+	return result
 }
 
 func (c *Calculator) GetStackString() []string {
-	return MapV(c.stack, func(x Num) string { return x.String() })
+	return MapV(c.GetStack(), func(x Num) string { return x.String() })
 }
 
 func (c *Calculator) GetHistory() []string {
@@ -40,7 +49,10 @@ func (c *Calculator) GetHistory() []string {
 }
 
 func (c *Calculator) SetStack(stack []Num) {
-	c.stack = stack
+	c.stack = make([]StackItem, len(stack))
+	for i, val := range stack {
+		c.stack[i] = StackItem{Value: val, Comment: ""}
+	}
 }
 
 func (c *Calculator) SetStackString(stack []string) {
@@ -51,7 +63,7 @@ func (c *Calculator) SetHistory(history []string) {
 	c.history = history
 }
 
-func (c *Calculator) GetUndo() [][]Num {
+func (c *Calculator) GetUndo() [][]StackItem {
 	return c.undo
 }
 
@@ -62,7 +74,12 @@ func (c *Calculator) GetDisplay() []string {
 		var s = fmt.Sprintf("%d: ", StackSize-ii)
 		si := c.Len() - (StackSize - ii)
 		if si >= 0 {
-			s += c.stack[si].String()
+			item := c.stack[si]
+			if item.Comment != "" {
+				s += fmt.Sprintf("%s # %s", item.Value.String(), item.Comment)
+			} else {
+				s += item.Value.String()
+			}
 		}
 		result[ii] = s
 	}
@@ -101,6 +118,15 @@ func (c *Calculator) Enter(value Num, explicit bool) {
 	c.Push(value)
 }
 
+// AddCommentToTop adds a comment to the top stack item
+func (c *Calculator) AddCommentToTop(comment string) error {
+	if c.Len() == 0 {
+		return errors.New("stack is empty")
+	}
+	c.stack[len(c.stack)-1].Comment = comment
+	return nil
+}
+
 //
 // stack operations
 //
@@ -115,17 +141,24 @@ func (c *Calculator) Len() int {
 
 func (c *Calculator) Push(values ...Num) {
 	var normalized = MapV(values, Normalize)
-	c.stack = TruncateStart(Push(c.stack, normalized...), MaxArraySize)
+	stackItems := make([]StackItem, len(normalized))
+	for i, val := range normalized {
+		stackItems[i] = StackItem{Value: val, Comment: ""}
+	}
+	c.stack = TruncateStart(Push(c.stack, stackItems...), MaxArraySize)
 }
 
 func (c *Calculator) Pop() Num {
-	var x Num
+	if len(c.stack) == 0 {
+		return decimal.Zero
+	}
+	var x StackItem
 	x, c.stack = Pop(c.stack)
-	return x
+	return x.Value
 }
 
 func (c *Calculator) Peek() Num {
-	return lo.Must(lo.Last(c.stack))
+	return lo.Must(lo.Last(c.stack)).Value
 }
 
 //
