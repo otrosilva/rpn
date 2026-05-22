@@ -152,6 +152,10 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 			m.input.Reset()
 			return cmd, nil
 		}
+		// In comment mode, reject # character
+		if key == "#" {
+			return cmd, nil
+		}
 		m.input, cmd = m.input.Update(msg)
 		return cmd, nil
 	}
@@ -321,7 +325,8 @@ func (m *Model) enter(explicit bool) error {
 func (m *Model) startComment() error {
 	m.commentMode = true
 	m.input.SetValue("")
-	m.input.Placeholder = "add comment..."
+	m.input.Placeholder = "add comment... (any character except #)"
+	m.say = "comment entry"
 	return nil
 }
 
@@ -434,7 +439,9 @@ func (m Model) stack(style lipgloss.Style) string {
 	})
 	if m.inputVisible {
 		if m.commentMode {
-			stack = internal.Push(stack, " "+m.input.View()+" #")
+			// Show comment input with visible text and # prefix
+			commentText := m.input.View()
+			stack = internal.Push(stack, " # "+commentText)
 		} else {
 			stack = internal.Push(stack, " "+m.input.View())
 		}
