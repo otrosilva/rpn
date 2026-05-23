@@ -151,6 +151,7 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 		}
 		if key == "esc" {
 			m.commentMode = false
+			m.inputVisible = false
 			m.input.Reset()
 			m.say = ""
 			return cmd, nil
@@ -329,6 +330,7 @@ func (m *Model) enter(explicit bool) error {
 // Start comment mode
 func (m *Model) startComment() error {
 	m.commentMode = true
+	m.inputVisible = true
 	m.input.SetValue("")
 	m.input.Placeholder = "add comment..."
 	m.say = "comment entry"
@@ -350,6 +352,7 @@ func (m *Model) finishComment() error {
 	}
 	
 	m.commentMode = false
+	m.inputVisible = false
 	m.input.Reset()
 	m.input.Placeholder = "enter number..."
 	m.say = "comment added"
