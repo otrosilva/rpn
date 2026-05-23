@@ -82,8 +82,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// always clear msg when the user hits a key
-		m.err, m.say = "", ""
+		// only clear msg if not in comment mode
+		if !m.commentMode {
+			m.err, m.say = "", ""
+		}
 
 		if m.vhs && m.vhsUpdate(msg) {
 			return m, nil
