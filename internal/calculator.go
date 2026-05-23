@@ -118,12 +118,21 @@ func (c *Calculator) Enter(value Num, explicit bool) {
 	c.Push(value)
 }
 
-// AddCommentToTop adds a comment to the top stack item
+// AddCommentToTop adds a comment to the top stack item and updates history if it has a previous operation
 func (c *Calculator) AddCommentToTop(comment string) error {
 	if c.Len() == 0 {
 		return errors.New("stack is empty")
 	}
-	c.stack[len(c.stack)-1].Comment = comment
+	topIndex := len(c.stack) - 1
+	c.stack[topIndex].Comment = comment
+	
+	// If there's history, append the comment to the last history entry
+	if len(c.history) > 0 {
+		lastHistory := c.history[len(c.history)-1]
+		// Append comment to the last history entry
+		c.history[len(c.history)-1] = fmt.Sprintf("%s # %s", lastHistory, comment)
+	}
+	
 	return nil
 }
 
