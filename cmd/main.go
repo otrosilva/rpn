@@ -150,6 +150,7 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 		if key == "esc" {
 			m.commentMode = false
 			m.input.Reset()
+			m.say = ""
 			return cmd, nil
 		}
 		// In comment mode, reject # character
@@ -157,6 +158,8 @@ func (m *Model) onKey(msg tea.KeyMsg) (tea.Cmd, error) {
 			return cmd, nil
 		}
 		m.input, cmd = m.input.Update(msg)
+		// Keep "comment entry" status visible while typing
+		m.say = "comment entry"
 		return cmd, nil
 	}
 
@@ -325,7 +328,7 @@ func (m *Model) enter(explicit bool) error {
 func (m *Model) startComment() error {
 	m.commentMode = true
 	m.input.SetValue("")
-	m.input.Placeholder = "add comment... (any character except #)"
+	m.input.Placeholder = "add comment..."
 	m.say = "comment entry"
 	return nil
 }
