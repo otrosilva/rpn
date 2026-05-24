@@ -11,11 +11,14 @@ Vectro - the rpn calculator. To enter a number, start typing and then press ente
 **%**   x modulo y
 **!**   factorial
 
+**S**   sum all values (empties stack)
+**M**   mean of all values (empties stack)
 **s**   (S)wap top two values
-**y**   (Y)ank, copy to clipboard
+**y**   (Y)ank, copy last result to clipboard
 **z**   undo
 **q**   quit
 
+**#**   add comment to result
 **<backspace>**  drop value
 **<enter>**      duplicate value
 **<esc>**        clear
