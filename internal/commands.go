@@ -30,6 +30,7 @@ var Commands = []Command{
 	{Name: "INV", key: "i", fn: inv, fmt: "1 / %s = %s"},
 	{Name: "LN", fn: ln, valid: validGt0, fmt: "ln(%s) = %s"}, // bad key, don't do it
 	{Name: "LOG", key: "l", fn: log, valid: validGt0, fmt: "log(%s) = %s"},
+	{Name: "MEAN", key: "M", fn: mean, valid: validNotEmpty, fmt: "mean = %s"},
 	{Name: "MOD", key: "%", fn: mod, fmt: "%s mod %s = %s"},
 	{Name: "MUL", key: "*", fn: mul, fmt: "%s * %s = %s"},
 	{Name: "NEG", key: "n", fn: neg},
@@ -37,6 +38,7 @@ var Commands = []Command{
 	{Name: "POW", key: "^", fn: pow, fmt: "%s ^ %s = %s"},
 	{Name: "SQRT", key: "@", fn: sqrt, valid: validGte0, fmt: "sqrt(%s) = %s"},
 	{Name: "SUB", key: "-", fn: sub, fmt: "%s - %s = %s"},
+	{Name: "SUM", key: "S", fn: sum, valid: validNotEmpty, fmt: "sum = %s"},
 	{Name: "SWAP", key: "s", fn: swap},
 	{Name: "YANK", key: "y", fn: yank},
 	{Name: "UNDO", key: "z", fn: undo, valid: validUndo},
@@ -77,9 +79,52 @@ func pow(_ *Calculator, a, b Num) Num { return Pow(a, b) }
 func sqrt(_ *Calculator, a Num) Num   { return Pow(a, Half) }
 func sub(_ *Calculator, a, b Num) Num { return a.Sub(b) }
 func undo(c *Calculator)              { c.Undo() }
-func yank(c *Calculator, a Num) {
-	c.Push(a)
-	_ = clipboard.WriteAll(a.String())
+
+func sum(c *Calculator) Num {
+	if c.Len() == 0 {
+		return decimal.Zero
+	}
+	total := decimal.Zero
+	for i := 0; i < c.Len(); i++ {
+		total = total.Add(c.GetStack()[i])
+	}
+	// Clear the stack
+	for i := 0; i < c.Len(); i++ {
+		c.Pop()
+	}
+	// Push result
+	c.Push(total)
+	return total
+}
+
+func mean(c *Calculator) Num {
+	if c.Len() == 0 {
+		return decimal.Zero
+	}
+	stack := c.GetStack()
+	total := decimal.Zero
+	for _, val := range stack {
+		total = total.Add(val)
+	}
+	count := decimal.NewFromInt(int64(len(stack)))
+	result := total.Div(count)
+	
+	// Clear the stack
+	for i := 0; i < c.Len(); i++ {
+		c.Pop()
+	}
+	// Push result
+	c.Push(result)
+	return result
+}
+
+func yank(c *Calculator) {
+	// Copy the last history entry to clipboard
+	history := c.GetHistory()
+	if len(history) > 0 {
+		lastEntry := history[len(history)-1]
+		_ = clipboard.WriteAll(lastEntry)
+	}
 }
 
 //
@@ -96,21 +141,31 @@ func validFact(c *Calculator) error {
 	}
 	return nil
 }
+
 func validGt0(c *Calculator) error {
 	if !c.Peek().IsPositive() {
 		return errors.New("not positive")
 	}
 	return nil
 }
+
 func validGte0(c *Calculator) error {
 	if c.Peek().IsNegative() {
 		return errors.New("not positive")
 	}
 	return nil
 }
+
 func validNot0(c *Calculator) error {
 	if c.Peek().IsZero() {
 		return errors.New("divide by zero")
+	}
+	return nil
+}
+
+func validNotEmpty(c *Calculator) error {
+	if c.Len() == 0 {
+		return errors.New("stack is empty")
 	}
 	return nil
 }
