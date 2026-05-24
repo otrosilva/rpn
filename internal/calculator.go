@@ -103,8 +103,11 @@ func (c *Calculator) Undo() {
 //
 
 func (c *Calculator) Clear() {
-	c.stack = nil
 	c.history = nil
+}
+
+func (c *Calculator) ClearStack() {
+	c.stack = nil
 }
 
 func (c *Calculator) History() []string {
