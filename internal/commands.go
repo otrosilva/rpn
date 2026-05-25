@@ -102,6 +102,8 @@ func sumCmd(c *Calculator) {
 	c.ClearStack()
 	// Push result
 	c.Push(total)
+	// Add to history
+	c.AddHistory("sum = " + total.String())
 }
 
 func meanCmd(c *Calculator) {
@@ -120,6 +122,8 @@ func meanCmd(c *Calculator) {
 	c.ClearStack()
 	// Push result
 	c.Push(result)
+	// Add to history
+	c.AddHistory("mean = " + result.String())
 }
 
 func yank(c *Calculator) {
