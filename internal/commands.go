@@ -93,13 +93,13 @@ func sum(c *Calculator) Num {
 		return decimal.Zero
 	}
 	total := decimal.Zero
-	for i := 0; i < c.Len(); i++ {
+	// Sum all stack items
+	stackLen := c.Len()
+	for i := 0; i < stackLen; i++ {
 		total = total.Add(c.GetStack()[i])
 	}
-	// Clear the stack
-	for i := 0; i < c.Len(); i++ {
-		c.Pop()
-	}
+	// Clear the stack by removing all items
+	c.ClearStack()
 	// Push result
 	c.Push(total)
 	return total
@@ -117,10 +117,8 @@ func mean(c *Calculator) Num {
 	count := decimal.NewFromInt(int64(len(stack)))
 	result := total.Div(count)
 	
-	// Clear the stack
-	for i := 0; i < c.Len(); i++ {
-		c.Pop()
-	}
+	// Clear the stack by removing all items
+	c.ClearStack()
 	// Push result
 	c.Push(result)
 	return result
