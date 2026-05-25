@@ -50,11 +50,12 @@ var CommandsByKey = lo.KeyBy(lo.Filter(Commands, func(c Command, _ int) bool { r
 
 // these are sometimes run directly
 const (
-	DROP = "DROP"
-	DUP  = "DUP"
-	NEG  = "NEG"
-	UNDO = "UNDO"
-	YANK = "YANK"
+	CLEAR = "CLEAR"
+	DROP  = "DROP"
+	DUP   = "DUP"
+	NEG   = "NEG"
+	UNDO  = "UNDO"
+	YANK  = "YANK"
 )
 
 //
@@ -62,7 +63,14 @@ const (
 //
 
 func add(_ *Calculator, a, b Num) Num { return a.Add(b) }
-func clear(c *Calculator)             { c.Clear() }
+func clear(c *Calculator) {
+	// If history is empty, clear the stack too
+	if len(c.GetHistory()) == 0 {
+		c.ClearStack()
+	} else {
+		c.Clear()
+	}
+}
 func div(_ *Calculator, a, b Num) Num { return a.Div(b) }
 func drop(_ *Calculator, _ Num)       { /* nop */ }
 func dup(c *Calculator, a Num)        { c.Push(a, a) }
