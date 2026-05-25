@@ -30,7 +30,7 @@ var Commands = []Command{
 	{Name: "INV", key: "i", fn: inv, fmt: "1 / %s = %s"},
 	{Name: "LN", fn: ln, valid: validGt0, fmt: "ln(%s) = %s"}, // bad key, don't do it
 	{Name: "LOG", key: "l", fn: log, valid: validGt0, fmt: "log(%s) = %s"},
-	{Name: "MEAN", key: "M", fn: mean, valid: validNotEmpty, fmt: "mean = %s"},
+	{Name: "MEAN", key: "M", fn: meanCmd, valid: validNotEmpty},
 	{Name: "MOD", key: "%", fn: mod, fmt: "%s mod %s = %s"},
 	{Name: "MUL", key: "*", fn: mul, fmt: "%s * %s = %s"},
 	{Name: "NEG", key: "n", fn: neg},
@@ -38,7 +38,7 @@ var Commands = []Command{
 	{Name: "POW", key: "^", fn: pow, fmt: "%s ^ %s = %s"},
 	{Name: "SQRT", key: "@", fn: sqrt, valid: validGte0, fmt: "sqrt(%s) = %s"},
 	{Name: "SUB", key: "-", fn: sub, fmt: "%s - %s = %s"},
-	{Name: "SUM", key: "S", fn: sum, valid: validNotEmpty, fmt: "sum = %s"},
+	{Name: "SUM", key: "S", fn: sumCmd, valid: validNotEmpty},
 	{Name: "SWAP", key: "s", fn: swap},
 	{Name: "YANK", key: "y", fn: yank},
 	{Name: "UNDO", key: "z", fn: undo, valid: validUndo},
@@ -88,9 +88,9 @@ func sqrt(_ *Calculator, a Num) Num   { return Pow(a, Half) }
 func sub(_ *Calculator, a, b Num) Num { return a.Sub(b) }
 func undo(c *Calculator)              { c.Undo() }
 
-func sum(c *Calculator) Num {
+func sumCmd(c *Calculator) {
 	if c.Len() == 0 {
-		return decimal.Zero
+		return
 	}
 	total := decimal.Zero
 	// Sum all stack items
@@ -98,16 +98,17 @@ func sum(c *Calculator) Num {
 	for i := 0; i < stackLen; i++ {
 		total = total.Add(c.GetStack()[i])
 	}
-	// Clear the stack by removing all items
+	// Clear the stack
 	c.ClearStack()
 	// Push result
 	c.Push(total)
-	return total
+	// Add to history
+	c.AddHistory("sum = " + total.String())
 }
 
-func mean(c *Calculator) Num {
+func meanCmd(c *Calculator) {
 	if c.Len() == 0 {
-		return decimal.Zero
+		return
 	}
 	stack := c.GetStack()
 	total := decimal.Zero
@@ -117,11 +118,12 @@ func mean(c *Calculator) Num {
 	count := decimal.NewFromInt(int64(len(stack)))
 	result := total.Div(count)
 	
-	// Clear the stack by removing all items
+	// Clear the stack
 	c.ClearStack()
 	// Push result
 	c.Push(result)
-	return result
+	// Add to history
+	c.AddHistory("mean = " + result.String())
 }
 
 func yank(c *Calculator) {
