@@ -156,9 +156,34 @@ func calc(stack *stackType, cmd string) error {
 		line = strings.TrimSpace(line)
 		line = cleanRe.ReplaceAllString(line, "")
 
+		tokens := strings.Fields(line)
+		
+		// Check for variable assignment: VAR <name>
+		if len(tokens) >= 2 && (tokens[0] == "var" || tokens[0] == "VAR") {
+			if len(stack.list) == 0 {
+				fmt.Printf(errorMsg("ERROR: Stack is empty. Cannot assign variable.\n"))
+				stack.restore()
+				continue
+			}
+			varName := tokens[1]
+			if !isValidVariableName(varName) {
+				fmt.Printf(errorMsg("ERROR: Invalid variable name: %q. Must start with a letter.\n"), varName)
+				stack.restore()
+				continue
+			}
+			value := stack.top()
+			if err := vars.set(varName, value); err != nil {
+				fmt.Printf(errorMsg("ERROR: %v\n"), err)
+				stack.restore()
+			} else {
+				fmt.Printf(warnMsg("Variable %q set to %s\n"), varName, formatNumber(ctx, value, ops.base, ops.decimals))
+			}
+			continue
+		}
+
 		// Split into fields and process
 		autoprint := false
-		for _, token := range strings.Fields(line) {
+		for _, token := range tokens {
 			// Check operator map.
 			handler, ok := opmap[token]
 			if ok {
@@ -207,16 +232,8 @@ func calc(stack *stackType, cmd string) error {
 				os.Exit(0)
 			}
 
-			// Check if it's a variable assignment: VAR <name>
-			if token == "var" || token == "VAR" {
-				// Next token should be the variable name
-				continue
-			}
-
-			// Check if this is a valid variable name (either assignment or retrieval)
+			// Check if it's a valid variable name (retrieve variable)
 			if isValidVariableName(token) {
-				// Check if it was preceded by VAR keyword
-				// For now, assume we're trying to retrieve a variable
 				if value, err := vars.get(token); err == nil {
 					stack.push(value)
 					autoprint = true
@@ -237,26 +254,6 @@ func calc(stack *stackType, cmd string) error {
 			// Valid number
 			stack.push(n)
 			continue
-		}
-
-		// Handle variable assignment after we've processed all tokens.
-		// Look for pattern: value VAR name
-		tokens := strings.Fields(line)
-		for i := 1; i < len(tokens)-1; i++ {
-			if (tokens[i] == "var" || tokens[i] == "VAR") && isValidVariableName(tokens[i+1]) {
-				// Get the value from the top of the stack
-				if len(stack.list) > 0 {
-					value := stack.top()
-					varName := tokens[i+1]
-					if err := vars.set(varName, value); err != nil {
-						fmt.Printf(errorMsg("ERROR: %v\n"), err)
-						stack.restore()
-					} else {
-						fmt.Printf(warnMsg("Variable %q set to %s\n"), varName, formatNumber(ctx, value, ops.base, ops.decimals))
-					}
-				}
-				break
-			}
 		}
 
 		if autoprint {
