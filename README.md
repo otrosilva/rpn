@@ -89,6 +89,77 @@ If you have go installed, just run:
 go install github.com/marcopaganini/rpn@latest
 ```
 
+## Variables
+
+RPN now supports variable storage and retrieval, allowing you to save calculation results for later use.
+
+### Variable Operations
+
+* **`VAR`** - Assign the top of the stack to a variable
+* **`vars`** - List all defined variables
+* **`clrv`** - Clear all variables
+
+### Using Variables
+
+Variables must start with a letter and contain only letters, numbers, and underscores.
+
+#### Example 1: Basic Variable Assignment
+
+```
+> 72.5
+> VAR RUBUSD
+Variable "RUBUSD" set to 72.5
+> RUBUSD
+= 72.5
+```
+
+#### Example 2: Using Variables in Calculations
+
+```
+> 72.5
+> VAR RATE
+Variable "RATE" set to 72.5
+> 10
+> RATE
+> +
+= 82.5
+```
+
+#### Example 3: Multiple Variables
+
+```
+> 100
+> VAR price
+Variable "price" set to 100
+> 15
+> VAR discount_percent
+Variable "discount_percent" set to 15
+> price
+> discount_percent
+> %
+= 15
+> price
+> swap (or use "x")
+> -
+= 85
+```
+
+#### Example 4: Listing and Clearing Variables
+
+```
+> vars
+=== Variables ===
+  price = 100
+  discount_percent = 15
+  RATE = 72.5
+
+> clrv
+All variables cleared
+
+> vars
+No variables defined
+```
+
 ## Limitations and Caveats
 
 This projects uses the excellent
