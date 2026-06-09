@@ -268,12 +268,55 @@ func calc(stack *stackType, cmd string) error {
 			continue
 		}
 
-		// Split into fields and process
+		// Split into fields and process using an index loop to support
+		// lookahead for the "times" construct: <word> N times
 		autoprint := false
-		for _, token := range tokens {
+		i := 0
+		for i < len(tokens) {
+			token := tokens[i]
+
+			// Lookahead: "<word> N times" — don't execute the word yet,
+			// wait until we confirm the pattern.
+			if i+1 < len(tokens) && tokens[i+1] == "times" {
+				wordName := token
+				i += 2 // consume <word> + "times"
+
+				if !words.exists(wordName) {
+					fmt.Printf(errorMsg("ERROR: %q is not a defined word\n"), wordName)
+					stack.restore()
+					break
+				}
+				if len(stack.list) == 0 {
+					fmt.Printf(errorMsg("ERROR: times requires N on the stack\n"))
+					stack.restore()
+					break
+				}
+				nVal, ok := stack.top().Uint64()
+				if !ok || !stack.top().IsInt() {
+					fmt.Printf(errorMsg("ERROR: times requires a positive integer on the stack\n"))
+					stack.restore()
+					break
+				}
+				stack.list = stack.list[:len(stack.list)-1] // pop N
+
+				loopErr := false
+				for range nVal {
+					if err := executeWord(wordName, 0, stack, opmap, vars, words); err != nil {
+						fmt.Printf(errorMsg("ERROR: %v\n"), err)
+						stack.restore()
+						loopErr = true
+						break
+					}
+				}
+				if loopErr {
+					break
+				}
+				autoprint = true
+				continue
+			}
+
 			// Check operator map.
-			handler, ok := opmap[token]
-			if ok {
+			if handler, ok := opmap[token]; ok {
 				results, remove, err := operation(handler, stack)
 				if err != nil {
 					if single {
@@ -283,13 +326,9 @@ func calc(stack *stackType, cmd string) error {
 					stack.restore()
 					break
 				}
-				// If the particular handler does not ignore results from the
-				// function, set autoprint to true. This will cause the top of
-				// the stack results to be printed.
 				autoprint = (len(results) > 0 || remove > 0)
 
 				if !single {
-					// Set readline prompt based on base and degrees/radian mode.
 					switch {
 					case ops.degmode:
 						rl.SetPrompt("deg> ")
@@ -303,6 +342,7 @@ func calc(stack *stackType, cmd string) error {
 						rl.SetPrompt("bin> ")
 					}
 				}
+				i++
 				continue
 			}
 
@@ -317,6 +357,7 @@ func calc(stack *stackType, cmd string) error {
 					break
 				}
 				autoprint = true
+				i++
 				continue
 			}
 
@@ -325,6 +366,7 @@ func calc(stack *stackType, cmd string) error {
 				if err := ops.help(); err != nil {
 					fmt.Println(errorMsg(err))
 				}
+				i++
 				continue
 			}
 
@@ -338,13 +380,13 @@ func calc(stack *stackType, cmd string) error {
 				if value, err := vars.get(token); err == nil {
 					stack.push(value)
 					autoprint = true
+					i++
 					continue
 				}
 				// If not found as a variable, fall through to number parsing
 			}
 
 			// At this point, it's either a number or not recognized.
-			// If anything fails, restore stack and stop token processing.
 			n, err := atof(token)
 			if err != nil {
 				fmt.Printf(errorMsg("Not a number or operator: %q.\n"), token)
@@ -354,6 +396,7 @@ func calc(stack *stackType, cmd string) error {
 			}
 			// Valid number
 			stack.push(n)
+			i++
 			continue
 		}
 
