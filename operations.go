@@ -37,6 +37,7 @@ type (
 		degmode  bool          // Degrees mode (default = Radians)
 		stack    *stackType    // stack object to use
 		vars     *variablesType // variables object to use
+		words    *wordsType    // words (functions) object to use
 		ops      []any         // list of ophandlers & descriptions
 	}
 
@@ -80,12 +81,13 @@ func bigToUint64(x *decimal.Big) uint64 {
 	return floor
 }
 
-func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType) *opsType {
+func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType, words *wordsType) *opsType {
 	ret := &opsType{
 		base:     10,
 		decimals: 6,
 		stack:    stack,
 		vars:     vars,
+		words:    words,
 	}
 	var build string
 	if Build == "" {
@@ -302,6 +304,28 @@ func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType) *ops
 		ophandler{"clrv", "Clear all variables", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
 			vars.clear()
 			fmt.Println(warnMsg("All variables cleared"))
+			return nil, 0, nil
+		}},
+
+		"",
+		"BOLD:Word (Function) Operations",
+		"  FUNC <name> <operations> ; - Define a user function",
+		"  <name> - Call a user-defined function",
+		ophandler{"words", "List all defined words (functions)", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
+			wordMap := words.list()
+			if len(wordMap) == 0 {
+				fmt.Println(warnMsg("No words defined"))
+			} else {
+				fmt.Println(bold("=== Words ==="))
+				for name, word := range wordMap {
+					fmt.Printf("  %s: %s\n", name, strings.Join(word.ops, " "))
+				}
+			}
+			return nil, 0, nil
+		}},
+		ophandler{"clrw", "Clear all words", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
+			words.clear()
+			fmt.Println(warnMsg("All words cleared"))
 			return nil, 0, nil
 		}},
 
