@@ -285,7 +285,9 @@ func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType) *ops
 
 		"",
 		"BOLD:Variable Operations",
-		ophandler{"vars", "List all variables", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
+		"  VAR <name> - Assign top of stack to a variable",
+		"  <name> - Retrieve a variable value and push to stack",
+		ophandler{"vars", "List all defined variables", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
 			varMap := vars.list()
 			if len(varMap) == 0 {
 				fmt.Println(warnMsg("No variables defined"))
