@@ -113,8 +113,11 @@ func calc(stack *stackType, cmd string) error {
 	// Variables storage
 	vars := newVariablesType()
 
+	// Words (user-defined functions) storage
+	words := newWordsType()
+
 	// Operations
-	ops := newOpsType(ctx, stack, vars)
+	ops := newOpsType(ctx, stack, vars, words)
 	opmap := ops.opmap()
 
 	if !single {
@@ -129,7 +132,7 @@ func calc(stack *stackType, cmd string) error {
 	// remove undesirable formatting characters, making cut/paste operations
 	// simpler. If you add a new operation as a single special character, make
 	// sure it's represented here.
-	cleanRe := regexp.MustCompile(`[^-+./*%^=[:alnum:]_\s]`)
+	cleanRe := regexp.MustCompile(`[^-+./*%^=:;[:alnum:]_\s]`)
 
 	for {
 		// Save a copy of the stack so we can restore it to the previous state
@@ -157,7 +160,42 @@ func calc(stack *stackType, cmd string) error {
 		line = cleanRe.ReplaceAllString(line, "")
 
 		tokens := strings.Fields(line)
-		
+
+		// Check for word definition: func <name> ... ;
+		if len(tokens) >= 3 && (tokens[0] == "func" || tokens[0] == "FUNC") {
+			semiIdx := -1
+			for i, t := range tokens {
+				if t == ";" {
+					semiIdx = i
+					break
+				}
+			}
+			if semiIdx <= 1 {
+				fmt.Printf(errorMsg("ERROR: Invalid word definition. Expected: func <name> <operations> ;\n"))
+				stack.restore()
+				continue
+			}
+			wordName := tokens[1]
+			if !isValidVariableName(wordName) {
+				fmt.Printf(errorMsg("ERROR: Invalid word name: %q. Must start with a letter.\n"), wordName)
+				stack.restore()
+				continue
+			}
+			wordOps := tokens[2:semiIdx]
+			if len(wordOps) == 0 {
+				fmt.Printf(errorMsg("ERROR: Word definition cannot be empty.\n"))
+				stack.restore()
+				continue
+			}
+			if err := words.define(wordName, wordOps); err != nil {
+				fmt.Printf(errorMsg("ERROR: %v\n"), err)
+				stack.restore()
+			} else {
+				fmt.Printf(warnMsg("Word %q defined with %d operations\n"), wordName, len(wordOps))
+			}
+			continue
+		}
+
 		// Check for variable assignment: VAR <name>
 		if len(tokens) >= 2 && (tokens[0] == "var" || tokens[0] == "VAR") {
 			if len(stack.list) == 0 {
@@ -216,6 +254,42 @@ func calc(stack *stackType, cmd string) error {
 						rl.SetPrompt("bin> ")
 					}
 				}
+				continue
+			}
+
+			// Check if it's a user-defined word
+			if word, err := words.get(token); err == nil {
+				// Execute the word's operations
+				for _, op := range word.ops {
+					// Try as operator first
+					if h, ok := opmap[op]; ok {
+						_, _, err := operation(h, stack)
+						if err != nil {
+							fmt.Printf(errorMsg("ERROR in word %q: %v\n"), token, err)
+							stack.restore()
+							break
+						}
+						continue
+					}
+
+					// Try as variable
+					if val, err := vars.get(op); err == nil {
+						stack.push(val)
+						continue
+					}
+
+					// Try as number
+					n, err := atof(op)
+					if err == nil {
+						stack.push(n)
+						continue
+					}
+
+					fmt.Printf(errorMsg("ERROR in word %q: unknown operation %q\n"), token, op)
+					stack.restore()
+					break
+				}
+				autoprint = true
 				continue
 			}
 
