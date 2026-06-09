@@ -66,6 +66,33 @@ func atof(s string) (*decimal.Big, error) {
 	return bigUint(ret), nil
 }
 
+// isValidVariableName checks if a string is a valid variable name.
+// Variables must start with a letter and contain only alphanumeric characters and underscores.
+func isValidVariableName(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	// Must start with a letter
+	if !isLetter(rune(s[0])) {
+		return false
+	}
+	// Rest can be letters, digits, or underscores
+	for _, c := range s {
+		if !isAlphanumericOrUnderscore(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func isLetter(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
+}
+
+func isAlphanumericOrUnderscore(r rune) bool {
+	return isLetter(r) || (r >= '0' && r <= '9') || r == '_'
+}
+
 // calc contains the bulk of the calculator code. It takes a stack and an
 // optional string argument. If string the string is not empty, it executes the
 // oeprations in the string and returns. If the string is empty, it enters a
@@ -83,8 +110,11 @@ func calc(stack *stackType, cmd string) error {
 	// Single command execution?
 	single := (cmd != "")
 
+	// Variables storage
+	vars := newVariablesType()
+
 	// Operations
-	ops := newOpsType(ctx, stack)
+	ops := newOpsType(ctx, stack, vars)
 	opmap := ops.opmap()
 
 	if !single {
@@ -99,7 +129,7 @@ func calc(stack *stackType, cmd string) error {
 	// remove undesirable formatting characters, making cut/paste operations
 	// simpler. If you add a new operation as a single special character, make
 	// sure it's represented here.
-	cleanRe := regexp.MustCompile(`[^-+./*%^=[:alnum:]\s]`)
+	cleanRe := regexp.MustCompile(`[^-+./*%^=[:alnum:]_\s]`)
 
 	for {
 		// Save a copy of the stack so we can restore it to the previous state
@@ -177,6 +207,24 @@ func calc(stack *stackType, cmd string) error {
 				os.Exit(0)
 			}
 
+			// Check if it's a variable assignment: VAR <name>
+			if token == "var" || token == "VAR" {
+				// Next token should be the variable name
+				continue
+			}
+
+			// Check if this is a valid variable name (either assignment or retrieval)
+			if isValidVariableName(token) {
+				// Check if it was preceded by VAR keyword
+				// For now, assume we're trying to retrieve a variable
+				if value, err := vars.get(token); err == nil {
+					stack.push(value)
+					autoprint = true
+					continue
+				}
+				// If not found as a variable, fall through to number parsing
+			}
+
 			// At this point, it's either a number or not recognized.
 			// If anything fails, restore stack and stop token processing.
 			n, err := atof(token)
@@ -189,6 +237,26 @@ func calc(stack *stackType, cmd string) error {
 			// Valid number
 			stack.push(n)
 			continue
+		}
+
+		// Handle variable assignment after we've processed all tokens.
+		// Look for pattern: value VAR name
+		tokens := strings.Fields(line)
+		for i := 1; i < len(tokens)-1; i++ {
+			if (tokens[i] == "var" || tokens[i] == "VAR") && isValidVariableName(tokens[i+1]) {
+				// Get the value from the top of the stack
+				if len(stack.list) > 0 {
+					value := stack.top()
+					varName := tokens[i+1]
+					if err := vars.set(varName, value); err != nil {
+						fmt.Printf(errorMsg("ERROR: %v\n"), err)
+						stack.restore()
+					} else {
+						fmt.Printf(warnMsg("Variable %q set to %s\n"), varName, formatNumber(ctx, value, ops.base, ops.decimals))
+					}
+				}
+				break
+			}
 		}
 
 		if autoprint {
