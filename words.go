@@ -12,8 +12,8 @@ import (
 type (
 	// wordType represents a user-defined word (function)
 	wordType struct {
-		name  string   // name of the word
-		ops   []string // sequence of operations/tokens to execute
+		name string   // name of the word
+		ops  []string // sequence of operations/tokens to execute
 	}
 
 	// wordsType holds a map of word names to word definitions
@@ -37,7 +37,7 @@ func (w *wordsType) define(name string, ops []string) error {
 	if !isValidVariableName(name) {
 		return fmt.Errorf("invalid word name: %q. Must start with a letter", name)
 	}
-	
+
 	if len(ops) == 0 {
 		return errors.New("word definition cannot be empty")
 	}
