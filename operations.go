@@ -31,12 +31,13 @@ type (
 	// their descriptions. The operations go in a list of interfaces so
 	// we can also use strings and print them in the help() function.
 	opsType struct {
-		base     int        // Base for printing (default = 10)
-		debug    bool       // Debug state
-		decimals int        // How many decimals to use when printing
-		degmode  bool       // Degrees mode (default = Radians)
-		stack    *stackType // stack object to use
-		ops      []any      // list of ophandlers & descriptions
+		base     int           // Base for printing (default = 10)
+		debug    bool          // Debug state
+		decimals int           // How many decimals to use when printing
+		degmode  bool          // Degrees mode (default = Radians)
+		stack    *stackType    // stack object to use
+		vars     *variablesType // variables object to use
+		ops      []any         // list of ophandlers & descriptions
 	}
 
 	// opmapType is a handler to operation map, used to find the right
@@ -79,11 +80,12 @@ func bigToUint64(x *decimal.Big) uint64 {
 	return floor
 }
 
-func newOpsType(ctx decimal.Context, stack *stackType) *opsType {
+func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType) *opsType {
 	ret := &opsType{
 		base:     10,
 		decimals: 6,
 		stack:    stack,
+		vars:     vars,
 	}
 	var build string
 	if Build == "" {
@@ -279,6 +281,26 @@ func newOpsType(ctx decimal.Context, stack *stackType) *opsType {
 		}},
 		ophandler{"x", "Exchange x and y", 2, func(a []*decimal.Big) ([]*decimal.Big, int, error) {
 			return []*decimal.Big{a[0], a[1]}, 2, nil
+		}},
+
+		"",
+		"BOLD:Variable Operations",
+		ophandler{"vars", "List all variables", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
+			varMap := vars.list()
+			if len(varMap) == 0 {
+				fmt.Println(warnMsg("No variables defined"))
+			} else {
+				fmt.Println(bold("=== Variables ==="))
+				for name, value := range varMap {
+					fmt.Printf("  %s = %s\n", name, formatNumber(ctx, value, ret.base, ret.decimals))
+				}
+			}
+			return nil, 0, nil
+		}},
+		ophandler{"clrv", "Clear all variables", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
+			vars.clear()
+			fmt.Println(warnMsg("All variables cleared"))
+			return nil, 0, nil
 		}},
 
 		"",
