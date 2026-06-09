@@ -287,7 +287,7 @@ func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType, word
 
 		"",
 		"BOLD:Variable Operations",
-		"  VAR <name> - Assign top of stack to a variable",
+		"  var <name> - Assign top of stack to a variable",
 		"  <name> - Retrieve a variable value and push to stack",
 		ophandler{"vars", "List all defined variables", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
 			varMap := vars.list()
@@ -309,7 +309,7 @@ func newOpsType(ctx decimal.Context, stack *stackType, vars *variablesType, word
 
 		"",
 		"BOLD:Word (Function) Operations",
-		"  FUNC <name> <operations> ; - Define a user function",
+		"  func <name> <operations> ; - Define a user function",
 		"  <name> - Call a user-defined function",
 		ophandler{"words", "List all defined words (functions)", 0, func(_ []*decimal.Big) ([]*decimal.Big, int, error) {
 			wordMap := words.list()
