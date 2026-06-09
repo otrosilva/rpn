@@ -7,9 +7,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strings"
-
-	"github.com/ericlagergren/decimal"
 )
 
 type (
